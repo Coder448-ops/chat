@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cipher Ultimate Chat</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { background: #05070a; color: #e2e8f0; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
+        .chat-container { height: calc(100vh - 140px); overflow-y: auto; display: flex; flex-direction: column; padding: 20px; gap: 15px; }
+        .msg-bubble { max-width: 80%; padding: 12px 16px; border-radius: 20px; position: relative; animation: pop 0.2s ease; }
+        @keyframes pop { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .my-msg { align-self: flex-end; background: linear-gradient(135deg, #2563eb, #1d4ed8); border-bottom-right-radius: 4px; }
+        .other-msg { align-self: flex-start; background: #1e293b; border-bottom-left-radius: 4px; }
+        #camera-preview { width: 100%; max-width: 300px; border-radius: 15px; display: none; margin-bottom: 10px; border: 2px solid #3b82f6; }
+    </style>
+</head>
+<body>
+
+    <div id="auth-screen" class="fixed inset-0 z-50 bg-[#05070a] flex items-center justify-center p-4">
+        <div class="w-full max-w-md bg-slate-900 p-8 rounded-3xl border border-slate-800 text-center">
+            <i class="fas fa-shield-halved text-5xl text-blue-500 mb-4"></i>
+            <h1 class="text-2xl font-bold mb-6">Tizimga kirish</h1>
+            <input type="text" id="nickname" placeholder="Nikneymingizni yozing..." class="w-full bg-slate-800 border-none p-4 rounded-xl mb-4 outline-none focus:ring-2 focus:ring-blue-500 text-white">
+            <button onclick="initChat()" class="w-full bg-blue-600 hover:bg-blue-500 py-4 rounded-xl font-bold transition-all">Boshlash</button>
+        </div>
+    </div>
+
+    <div class="h-screen flex flex-col">
+        <header class="p-4 bg-slate-900/50 backdrop-blur-md border-b border-slate-800 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                <span class="font-bold tracking-tighter text-xl">CIPHER_NET</span>
+            </div>
+            <div class="flex gap-5 text-slate-400">
+                <button onclick="openCamera()"><i class="fas fa-camera text-xl hover:text-white"></i></button>
+                <button onclick="startVoice()"><i class="fas fa-microphone text-xl hover:text-white"></i></button>
+            </div>
+        </header>
+
+        <div id="chat-box" class="chat-container">
+            </div>
+
+        <footer class="p-4 bg-slate-900">
+            <div id="preview-area" class="flex flex-col items-center">
+                <video id="camera-preview" autoplay playsinline></video>
+                <canvas id="canvas" class="hidden"></canvas>
+            </div>
+            
+            <div class="max-w-5xl mx-auto flex items-center gap-3">
+                <input type="text" id="msg-input" placeholder="Xabaringizni yozing..." class="flex-1 bg-slate-800 border-none rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-blue-600">
+                <button onclick="sendMessage()" class="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all">
+                    <i class="fas fa-paper-plane text-lg"></i>
+                </button>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        // Foydalanuvchi ma'lumotlari
+        let user = "";
+        const chatBox = document.getElementById('chat-box');
+        const msgInput = document.getElementById('msg-input');
+        let stream = null;
+
+        // Xabarlar ombori (Local Storage simulyatsiyasi - haqiqiy server uchun API kerak)
+        // Lekin bitta brauzerda bir nechta oyna ochsangiz, bir-biriga xabar boradi
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'new_msg') {
+                renderMessage(JSON.parse(e.newValue), 'other');
+            }
+        });
+
+        function initChat() {
+            const nick = document.getElementById('nickname').value.trim();
+            if (nick) {
+                user = nick;
+                document.getElementById('auth-screen').style.display = 'none';
+            }
+        }
+
+        function sendMessage() {
+            const text = msgInput.value.trim();
+            if (!text) return;
+
+            const msgData = {
+                sender: user,
+                content: text,
+                time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+            };
+
+            renderMessage(msgData, 'my');
+            localStorage.setItem('new_msg', JSON.stringify(msgData)); // Boshqa tablar uchun yuborish
+            msgInput.value = "";
+        }
+
+        function renderMessage(data, type) {
+            const div = document.createElement('div');
+            div.className = `msg-bubble ${type === 'my' ? 'my-msg' : 'other-msg'}`;
+            div.innerHTML = `
+                <div class="text-[10px] font-bold opacity-70 mb-1">${data.sender}</div>
+                <div class="text-sm">${data.content}</div>
+                <div class="text-[9px] mt-1 text-right opacity-50">${data.time}</div>
+            `;
+            chatBox.appendChild(div);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        // KAMERA FUNKSIYASI
+        async function openCamera() {
+            const video = document.getElementById('camera-preview');
+            if (!stream) {
+                stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+                video.style.display = 'block';
+            } else {
+                // Rasmga olish (Snapshot)
+                const canvas = document.getElementById('canvas');
+                canvas.width = 300;
+                canvas.height = 225;
+                canvas.getContext('2d').drawImage(video, 0, 0, 300, 225);
+                
+                const imgMsg = {
+                    sender: user,
+                    content: `<img src="${canvas.toDataURL()}" class="rounded-lg">`,
+                    time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+                };
+                renderMessage(imgMsg, 'my');
+                localStorage.setItem('new_msg', JSON.stringify(imgMsg));
+
+                // Kamerani yopish
+                stream.getTracks().forEach(t => t.stop());
+                stream = null;
+                video.style.display = 'none';
+            }
+        }
+
+        // OVOZLI XABAR (Simulyatsiya)
+        function startVoice() {
+            msgInput.placeholder = "Ovoz yozilmoqda...";
+            setTimeout(() => {
+                msgInput.placeholder = "Xabaringizni yozing...";
+                const voiceMsg = {
+                    sender: user,
+                    content: `<div class="flex items-center gap-2"><i class="fas fa-play"></i> <div class="w-24 h-1 bg-white/30 rounded"></div> 0:03</div>`,
+                    time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+                };
+                renderMessage(voiceMsg, 'my');
+                localStorage.setItem('new_msg', JSON.stringify(voiceMsg));
+            }, 3000);
+        }
+
+        // Enter orqali yuborish
+        msgInput.addEventListener('keypress', (e) => { if(e.key === 'Enter') sendMessage(); });
+    </script>
+</body>
+</html>
