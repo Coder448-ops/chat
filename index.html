@@ -410,6 +410,7 @@
         let currentChatMode = "global"; // global or direct
         let currentDirectUser = ""; // recipient for direct messages
         let allUsers = {};
+        let loadedMessages = new Set(); // Track loaded messages to prevent duplicates
 
         // LOGIN
         function login() {
@@ -434,7 +435,7 @@
 
             // Load users list
             loadUsers();
-            // Listen for global messages
+            // Load global messages on start
             loadGlobalMessages();
 
             // Set up enter key
@@ -449,9 +450,12 @@
         // LOGOUT
         function logout() {
             database.ref(`users/${currentUser}`).remove();
+            database.ref('messages/global').off();
+            database.ref('messages/direct').off();
             currentUser = "";
             currentChatMode = "global";
             currentDirectUser = "";
+            loadedMessages.clear();
             document.getElementById('login-screen').classList.remove('login-hidden');
             document.getElementById('main-container').style.display = 'none';
             document.getElementById('login-username').value = "";
@@ -464,11 +468,22 @@
             event.target.classList.add('active');
             currentChatMode = tab;
             currentDirectUser = "";
+            loadedMessages.clear();
             document.getElementById('users-list').innerHTML = "";
+            
+            // Turn off all listeners
+            database.ref('messages/global').off();
+            database.ref('messages/direct').off();
+            
             if (tab === 'global') {
+                document.getElementById('chat-title').innerText = "Global Chat";
+                document.getElementById('chat-subtitle').innerText = "All users connected";
+                clearMessages();
                 loadGlobalUsers();
+                loadGlobalMessages();
             } else {
                 loadDirectUsers();
+                clearMessages();
             }
         }
 
@@ -496,17 +511,10 @@
             usersList.innerHTML = '<div style="padding: 12px; color: #666; font-size: 0.85rem;">📢 GLOBAL CHAT</div>';
             
             const globalDiv = document.createElement('div');
-            globalDiv.className = 'user-item' + (currentChatMode === 'global' && !currentDirectUser ? ' active' : '');
-            globalDiv.innerHTML = '<div class="user-name">All Users</div><div class="user-status">Public Channel</div>';
+            globalDiv.className = 'user-item active';
+            globalDiv.innerHTML = '<div class="user-name">All Users</div><div class="user-status">Public Channel (' + Object.keys(allUsers).length + ')</div>';
             globalDiv.onclick = () => selectGlobalChat();
             usersList.appendChild(globalDiv);
-
-            Object.keys(allUsers).forEach(username => {
-                const div = document.createElement('div');
-                div.className = 'user-item';
-                div.innerHTML = `<div class="user-name">${username}</div><div class="user-status">● Online</div>`;
-                usersList.appendChild(div);
-            });
         }
 
         // LOAD DIRECT USERS
@@ -527,22 +535,34 @@
         function selectGlobalChat() {
             currentChatMode = "global";
             currentDirectUser = "";
+            loadedMessages.clear();
             document.getElementById('chat-title').innerText = "Global Chat";
             document.getElementById('chat-subtitle').innerText = "All users connected - " + Object.keys(allUsers).length + " online";
             clearMessages();
-            loadGlobalMessages();
+            
+            // Turn off all listeners
+            database.ref('messages/global').off();
+            database.ref('messages/direct').off();
+            
             loadGlobalUsers();
+            loadGlobalMessages();
         }
 
         // SELECT DIRECT CHAT
         function selectDirectChat(username) {
             currentChatMode = "direct";
             currentDirectUser = username;
+            loadedMessages.clear();
             document.getElementById('chat-title').innerText = username;
             document.getElementById('chat-subtitle').innerText = "Direct message - ● Online";
             clearMessages();
-            loadDirectMessages(username);
+            
+            // Turn off all listeners
+            database.ref('messages/global').off();
+            database.ref('messages/direct').off();
+            
             loadDirectUsers();
+            loadDirectMessages(username);
         }
 
         // LOAD GLOBAL MESSAGES
@@ -550,7 +570,12 @@
             const messagesRef = database.ref('messages/global');
             messagesRef.limitToLast(50).on('child_added', (snapshot) => {
                 const data = snapshot.val();
-                displayMessage(data.sender, data.text, data.time, data.sender === currentUser);
+                const key = snapshot.key;
+                
+                if (!loadedMessages.has(key)) {
+                    loadedMessages.add(key);
+                    displayMessage(data.sender, data.text, data.time, data.sender === currentUser);
+                }
             });
         }
 
@@ -559,10 +584,13 @@
             const messagesRef = database.ref('messages/direct');
             messagesRef.limitToLast(100).on('child_added', (snapshot) => {
                 const data = snapshot.val();
+                const key = snapshot.key;
+                
                 const isFromCurrentToRecipient = data.sender === currentUser && data.recipient === recipient;
                 const isFromRecipientToCurrent = data.sender === recipient && data.recipient === currentUser;
                 
-                if (isFromCurrentToRecipient || isFromRecipientToCurrent) {
+                if ((isFromCurrentToRecipient || isFromRecipientToCurrent) && !loadedMessages.has(key)) {
+                    loadedMessages.add(key);
                     displayMessage(data.sender, data.text, data.time, isFromCurrentToRecipient);
                 }
             });
@@ -578,7 +606,7 @@
             const messageDiv = document.createElement('div');
             messageDiv.className = 'message' + (isSent ? ' sent' : ' received');
             messageDiv.innerHTML = `
-                <div class="message-bubble">${escapeHtml(text)}</div>
+                <div class="message-bubble"><strong>${sender}:</strong> ${escapeHtml(text)}</div>
                 <div class="message-time">${time}</div>
             `;
             messagesArea.appendChild(messageDiv);
@@ -600,7 +628,7 @@
                     time: time,
                     timestamp: new Date().getTime()
                 });
-            } else if (currentChatMode === "direct") {
+            } else if (currentChatMode === "direct" && currentDirectUser) {
                 database.ref('messages/direct').push({
                     sender: currentUser,
                     recipient: currentDirectUser,
@@ -611,15 +639,13 @@
             }
 
             input.value = "";
+            input.focus();
         }
 
         // CLEAR MESSAGES
         function clearMessages() {
             const messagesArea = document.getElementById('messages-area');
             messagesArea.innerHTML = '<div class="empty-chat"><span style="font-size: 2rem;">✓</span><p>Loading messages...</p></div>';
-            // Clear all listeners
-            database.ref('messages/global').off();
-            database.ref('messages/direct').off();
         }
 
         // ESCAPE HTML (XSS PROTECTION)
