@@ -1,273 +1,823 @@
 <!DOCTYPE html>
-<html lang="uz">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cipher Core | Global Link v7.0</title>
+    <title>Cipher Chat | Global Messaging Network</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;500;700&family=Orbitron:wght@400;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;500;700&family=Orbitron:wght@400;900&family=Inter:wght@400;500;600;700&display=swap');
 
         :root {
             --neon-blue: #00f3ff;
+            --neon-pink: #ff006e;
             --dark-void: #020205;
             --matrix-green: #00ff41;
+            --dark-bg: #0a0a15;
+            --card-bg: #1a1a2e;
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; cursor: crosshair; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
             background-color: var(--dark-void);
-            color: var(--matrix-green);
-            font-family: 'Fira Code', monospace;
+            color: #e0e0e0;
+            font-family: 'Inter', sans-serif;
             height: 100vh;
             overflow: hidden;
-            display: flex;
-            align-items: center;
-            justify-content: center;
         }
 
-        /* Access Gateway Styles */
-        #gateway {
+        /* LOGIN SCREEN */
+        #auth-screen {
             position: fixed;
             inset: 0;
-            background: radial-gradient(circle at center, #0a0a15 0%, #000 100%);
+            background: linear-gradient(135deg, #020205 0%, #0a0a15 100%);
             z-index: 1000;
             display: flex;
-            flex-direction: column;
             align-items: center;
             justify-content: center;
-            transition: opacity 0.8s ease;
+            backdrop-filter: blur(10px);
         }
 
-        .input-cyber {
-            background: rgba(0, 0, 0, 0.8);
-            border: 1px solid #1a1a1a;
-            color: #fff;
-            padding: 15px 25px;
-            width: 300px;
+        .auth-container {
             text-align: center;
-            outline: none;
-            font-size: 1.2rem;
-            transition: all 0.3s;
-            border-radius: 4px;
+            animation: fadeIn 0.6s ease;
         }
 
-        .input-cyber:focus {
-            border-color: var(--neon-blue);
-            box-shadow: 0 0 20px rgba(0, 243, 255, 0.2);
-        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
 
-        .btn-auth {
-            margin-top: 25px;
-            padding: 15px 50px;
-            background: transparent;
-            border: 1px solid var(--matrix-green);
-            color: var(--matrix-green);
+        .auth-header h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 3.5rem;
             font-weight: 900;
-            letter-spacing: 5px;
+            letter-spacing: 8px;
+            background: linear-gradient(90deg, var(--neon-blue), var(--neon-pink));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        .auth-header p {
+            font-size: 12px;
+            letter-spacing: 3px;
+            color: #666;
             text-transform: uppercase;
-            transition: all 0.4s;
+            margin-bottom: 40px;
         }
 
-        .btn-auth:hover {
-            background: var(--matrix-green);
-            color: #000;
-            box-shadow: 0 0 30px var(--matrix-green);
-        }
-
-        /* Main Console Interface */
-        .console-main {
-            width: 98vw;
-            height: 95vh;
-            background: rgba(5, 5, 8, 0.98);
-            border: 1px solid #111;
-            display: none;
+        .auth-form {
+            display: flex;
             flex-direction: column;
-            position: relative;
+            gap: 15px;
+            width: 100%;
+            max-width: 350px;
         }
 
-        .top-info {
-            background: #000;
-            padding: 10px 25px;
-            border-bottom: 1px solid #151515;
+        .auth-input {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(0, 243, 255, 0.2);
+            color: #fff;
+            padding: 15px 20px;
+            border-radius: 8px;
+            font-size: 1rem;
+            outline: none;
+            transition: all 0.3s;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .auth-input:focus {
+            border-color: var(--neon-blue);
+            background: rgba(0, 243, 255, 0.05);
+            box-shadow: 0 0 20px rgba(0, 243, 255, 0.1);
+        }
+
+        .auth-btn {
+            padding: 12px;
+            background: linear-gradient(90deg, var(--neon-blue), var(--neon-pink));
+            border: none;
+            color: #000;
+            font-weight: 700;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-size: 14px;
+        }
+
+        .auth-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(0, 243, 255, 0.3);
+        }
+
+        .auth-btn:active {
+            transform: translateY(0);
+        }
+
+        .auth-error {
+            color: #ff006e;
+            font-size: 12px;
+            margin-top: 10px;
+            display: none;
+        }
+
+        /* MAIN CHAT INTERFACE */
+        #chat-app {
+            display: none;
+            width: 100vw;
+            height: 100vh;
+            background: var(--dark-void);
+            flex-direction: column;
+        }
+
+        .chat-container {
+            display: flex;
+            height: 100vh;
+            gap: 0;
+        }
+
+        /* SIDEBAR */
+        .sidebar {
+            width: 320px;
+            background: var(--dark-bg);
+            border-right: 1px solid #222;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid #222;
             display: flex;
             justify-content: space-between;
-            font-size: 10px;
-            letter-spacing: 2px;
-            text-transform: uppercase;
+            align-items: center;
         }
 
-        #chat-logs {
+        .sidebar-header h2 {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--neon-blue);
+        }
+
+        .sidebar-search {
+            padding: 15px;
+            border-bottom: 1px solid #222;
+        }
+
+        .search-input {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid #333;
+            color: #fff;
+            padding: 10px 15px;
+            border-radius: 6px;
+            font-size: 13px;
+            outline: none;
+        }
+
+        .search-input:focus {
+            border-color: var(--neon-blue);
+            box-shadow: inset 0 0 10px rgba(0, 243, 255, 0.1);
+        }
+
+        .conversations {
             flex: 1;
-            padding: 30px;
             overflow-y: auto;
             display: flex;
             flex-direction: column;
-            gap: 12px;
         }
 
-        #chat-logs::-webkit-scrollbar { width: 3px; }
-        #chat-logs::-webkit-scrollbar-thumb { background: var(--matrix-green); }
-
-        .log-entry {
-            border-left: 1px solid #222;
-            padding: 8px 18px;
-            animation: slideUp 0.2s ease;
+        .conversations::-webkit-scrollbar {
+            width: 4px;
         }
 
-        @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .conversations::-webkit-scrollbar-thumb {
+            background: rgba(0, 243, 255, 0.3);
+            border-radius: 2px;
+        }
 
-        .log-time { color: #444; font-size: 0.75rem; margin-right: 12px; }
-        .log-user { color: var(--neon-blue); font-weight: bold; margin-right: 10px; }
-        .log-text { color: #e0e0e0; line-height: 1.5; }
+        .conversation-item {
+            padding: 12px 15px;
+            border-left: 3px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-bottom: 1px solid #1a1a1a;
+        }
 
-        .cmd-line {
-            padding: 25px;
-            background: #050505;
-            border-top: 1px solid #111;
+        .conversation-item:hover {
+            background: rgba(0, 243, 255, 0.05);
+        }
+
+        .conversation-item.active {
+            border-left-color: var(--neon-blue);
+            background: rgba(0, 243, 255, 0.1);
+        }
+
+        .conv-header {
             display: flex;
+            justify-content: space-between;
             align-items: center;
+        }
+
+        .conv-name {
+            font-weight: 600;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .conv-time {
+            font-size: 11px;
+            color: #666;
+        }
+
+        .conv-preview {
+            font-size: 12px;
+            color: #888;
+            margin-top: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* CHAT AREA */
+        .chat-main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: var(--dark-void);
+        }
+
+        .chat-header {
+            background: var(--dark-bg);
+            padding: 15px 25px;
+            border-bottom: 1px solid #222;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-header-info h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .chat-header-info p {
+            font-size: 11px;
+            color: #888;
+            margin-top: 2px;
+        }
+
+        .header-actions {
+            display: flex;
             gap: 15px;
         }
 
-        #cmd-input {
-            background: transparent;
+        .header-btn {
+            background: none;
             border: none;
-            outline: none;
-            color: #fff;
-            flex: 1;
-            font-size: 1rem;
+            color: #999;
+            cursor: pointer;
+            font-size: 18px;
+            transition: color 0.2s;
         }
 
-        .scan-overlay {
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-            z-index: 500;
-            background-size: 100% 2px, 3px 100%;
-            pointer-events: none;
+        .header-btn:hover {
+            color: var(--neon-blue);
+        }
+
+        /* MESSAGES AREA */
+        #messages-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        #messages-container::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        #messages-container::-webkit-scrollbar-thumb {
+            background: rgba(0, 243, 255, 0.2);
+            border-radius: 2px;
+        }
+
+        .message-group {
+            display: flex;
+            margin-bottom: 8px;
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message-group.own {
+            justify-content: flex-end;
+        }
+
+        .message-bubble {
+            max-width: 60%;
+            padding: 10px 16px;
+            border-radius: 12px;
+            word-wrap: break-word;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .message-group.own .message-bubble {
+            background: linear-gradient(135deg, var(--neon-blue), #0084ff);
+            color: #000;
+            border-bottom-right-radius: 4px;
+            font-weight: 500;
+        }
+
+        .message-group.other .message-bubble {
+            background: var(--card-bg);
+            color: #e0e0e0;
+            border-bottom-left-radius: 4px;
+        }
+
+        .message-info {
+            font-size: 11px;
+            color: #666;
+            margin-top: 4px;
+            padding: 0 16px;
+        }
+
+        .message-sender {
+            font-weight: 600;
+            color: var(--neon-blue);
+            margin-bottom: 4px;
+            font-size: 12px;
+        }
+
+        /* INPUT AREA */
+        .chat-input-area {
+            background: var(--dark-bg);
+            border-top: 1px solid #222;
+            padding: 15px 25px;
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+        }
+
+        #message-input {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid #333;
+            color: #fff;
+            padding: 12px 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            resize: none;
+            max-height: 100px;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.2s;
+        }
+
+        #message-input:focus {
+            border-color: var(--neon-blue);
+            background: rgba(0, 243, 255, 0.05);
+        }
+
+        .send-btn {
+            background: linear-gradient(90deg, var(--neon-blue), #0084ff);
+            border: none;
+            color: #000;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-weight: 700;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .send-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(0, 243, 255, 0.4);
+        }
+
+        .send-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* EMPTY STATE */
+        .empty-chat {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .empty-icon {
+            font-size: 4rem;
+            opacity: 0.3;
+        }
+
+        .empty-text {
+            color: #666;
+            font-size: 16px;
+            text-align: center;
+        }
+
+        /* ANIMATIONS */
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 250px;
+            }
+
+            .message-bubble {
+                max-width: 80%;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .chat-container {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+                height: auto;
+                max-height: 30vh;
+            }
+
+            .chat-main {
+                flex: 1;
+            }
+
+            .message-bubble {
+                max-width: 85%;
+            }
         }
     </style>
 </head>
 <body>
 
-    <div class="scan-overlay"></div>
+    <!-- LOGIN SCREEN -->
+    <div id="auth-screen">
+        <div class="auth-container">
+            <div class="auth-header">
+                <h1>CIPHER</h1>
+                <p>Secure Global Chat Network</p>
+            </div>
 
-    <div id="gateway">
-        <h1 style="font-family: 'Orbitron';" class="text-6xl font-black mb-2 tracking-[20px] text-white">CIPHER</h1>
-        <p class="text-[10px] text-zinc-600 mb-12 uppercase tracking-[8px]">Secure Universal Node Access</p>
-        
-        <div class="flex flex-col items-center">
-            <input type="text" id="auth-nick" placeholder="IDENTIFIER" class="input-cyber" autocomplete="off">
-            <button onclick="accessCore()" class="btn-auth">Initialize Link</button>
+            <form class="auth-form" id="auth-form">
+                <input 
+                    type="text" 
+                    id="auth-username" 
+                    class="auth-input" 
+                    placeholder="Username"
+                    autocomplete="off"
+                    required
+                >
+                <input 
+                    type="email" 
+                    id="auth-email" 
+                    class="auth-input" 
+                    placeholder="Email (optional)"
+                    autocomplete="off"
+                >
+                <button type="submit" class="auth-btn">Join Network</button>
+                <div class="auth-error" id="auth-error"></div>
+            </form>
         </div>
-        <div id="auth-log" class="mt-8 text-[10px] text-blue-900 uppercase">Awaiting credentials...</div>
     </div>
 
-    <div id="console-ui" class="console-main">
-        <div class="top-info">
-            <div class="flex gap-6">
-                <span>[ Uplink: <span class="text-blue-500">Active</span> ]</span>
-                <span>[ Protocol: <span class="text-white">UDP_GLOBAL</span> ]</span>
-            </div>
-            <div>[ Authenticated: <span id="user-tag" class="text-white">---</span> ]</div>
-        </div>
+    <!-- CHAT APPLICATION -->
+    <div id="chat-app">
+        <div class="chat-container">
+            <!-- SIDEBAR -->
+            <div class="sidebar">
+                <div class="sidebar-header">
+                    <h2>Messages</h2>
+                    <span style="cursor: pointer; color: #666; font-size: 20px;" onclick="logout()">⚙️</span>
+                </div>
 
-        <div id="chat-logs">
+                <div class="sidebar-search">
+                    <input 
+                        type="text" 
+                        id="search-conversations" 
+                        class="search-input"
+                        placeholder="Search conversations..."
+                    >
+                </div>
+
+                <div class="conversations" id="conversations-list">
+                    <div style="padding: 20px; text-align: center; color: #666; font-size: 12px;">
+                        No conversations yet.<br>Send a message to start!
+                    </div>
+                </div>
             </div>
 
-        <div class="cmd-line">
-            <span class="text-blue-500 font-bold">#root@global:~$</span>
-            <input type="text" id="cmd-input" placeholder="Xabarni butun dunyoga uzatish..." autocomplete="off">
+            <!-- CHAT MAIN AREA -->
+            <div class="chat-main">
+                <div class="chat-header">
+                    <div class="chat-header-info">
+                        <h3 id="current-chat-name">Select a conversation</h3>
+                        <p id="current-chat-status">Global Network • Online</p>
+                    </div>
+                    <div class="header-actions">
+                        <button class="header-btn" title="Search">🔍</button>
+                        <button class="header-btn" onclick="clearMessages()" title="Clear">🗑️</button>
+                    </div>
+                </div>
+
+                <div id="messages-container">
+                    <div class="empty-chat">
+                        <div class="empty-icon">💬</div>
+                        <div class="empty-text">Select a conversation or start a new one</div>
+                    </div>
+                </div>
+
+                <div class="chat-input-area">
+                    <input 
+                        type="text"
+                        id="message-input"
+                        placeholder="Type a message..."
+                        autocomplete="off"
+                    >
+                    <button class="send-btn" onclick="sendMessage()" title="Send">➤</button>
+                </div>
+            </div>
         </div>
     </div>
 
     <script>
-        /**
-         * FIREBASE GLOBAL REALTIME ENGINE
-         * NO API KEY LIMITS - STABLE CONNECTION
-         */
-
-        // BU KONFIGURATSIYA OCHIQ VA TAYYOR (O'zingnikini ham qo'shishing mumkin)
+        // ============ FIREBASE CONFIG ============
         const firebaseConfig = {
-            databaseURL: "https://cipher-global-default-rtdb.firebaseio.com/" // Test uchun ochiq baza
+            databaseURL: "https://cipher-global-default-rtdb.firebaseio.com/"
         };
 
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
-        const chatRef = database.ref('global_stream');
 
-        let myNick = "";
+        // ============ STATE MANAGEMENT ============
+        let currentUser = null;
+        let currentConversation = null;
+        let conversations = {};
+        let messageListeners = {};
 
-        function accessCore() {
-            const input = document.getElementById('auth-nick');
-            if(!input.value.trim()) return;
+        // ============ AUTHENTICATION ============
+        document.getElementById('auth-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const username = document.getElementById('auth-username').value.trim();
+            const email = document.getElementById('auth-email').value.trim();
 
-            myNick = input.value.trim();
-            document.getElementById('gateway').style.opacity = '0';
-            setTimeout(() => {
-                document.getElementById('gateway').style.display = 'none';
-                document.getElementById('console-ui').style.display = 'flex';
-                document.getElementById('user-tag').innerText = myNick;
-                loadStream();
-            }, 800);
+            if (!username || username.length < 3) {
+                showAuthError('Username must be at least 3 characters');
+                return;
+            }
+
+            currentUser = {
+                username: username,
+                email: email || `${username}@cipher.local`,
+                id: generateUID(),
+                joinedAt: new Date().toISOString()
+            };
+
+            // Save to Firebase
+            database.ref(`users/${currentUser.id}`).set({
+                username: currentUser.username,
+                email: currentUser.email,
+                joinedAt: currentUser.joinedAt,
+                lastSeen: new Date().toISOString()
+            });
+
+            // Switch to chat
+            document.getElementById('auth-screen').style.display = 'none';
+            document.getElementById('chat-app').style.display = 'flex';
+
+            loadConversations();
+            loadGlobalConversation();
+        });
+
+        function showAuthError(message) {
+            const errorDiv = document.getElementById('auth-error');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            setTimeout(() => { errorDiv.style.display = 'none'; }, 3000);
         }
 
-        function loadStream() {
-            // Bazadan oxirgi 100 ta xabarni olish va yangilarini kuzatish
-            chatRef.limitToLast(100).on('child_added', (snapshot) => {
-                const data = snapshot.val();
-                renderLog(data.user, data.msg, data.time);
+        // ============ CONVERSATION LOADING ============
+        function loadConversations() {
+            const convsRef = database.ref('conversations');
+            convsRef.on('value', (snapshot) => {
+                conversations = snapshot.val() || {};
+                renderConversationsList();
             });
         }
 
-        function pushMessage() {
-            const input = document.getElementById('cmd-input');
-            const text = input.value.trim();
-            if(!text) return;
-
-            const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second: '2-digit'});
-            
-            chatRef.push({
-                user: myNick,
-                msg: text,
-                time: time
+        function loadGlobalConversation() {
+            // Create or load global conversation
+            const globalConvRef = database.ref('conversations/global');
+            globalConvRef.once('value', (snapshot) => {
+                if (!snapshot.exists()) {
+                    globalConvRef.set({
+                        name: 'Global Chat',
+                        type: 'group',
+                        createdAt: new Date().toISOString(),
+                        participants: [currentUser.id]
+                    });
+                }
             });
 
-            input.value = "";
+            // Select global by default
+            selectConversation('global', 'Global Chat');
         }
 
-        function renderLog(user, msg, time) {
-            const logs = document.getElementById('chat-logs');
-            const div = document.createElement('div');
-            div.className = 'log-entry';
+        function renderConversationsList() {
+            const list = document.getElementById('conversations-list');
             
-            div.innerHTML = `
-                <span class="log-time">[${time}]</span>
-                <span class="log-user">${user}@terminal:~$</span>
-                <span class="log-text">${msg}</span>
+            if (Object.keys(conversations).length === 0) {
+                list.innerHTML = '<div style="padding: 20px; text-align: center; color: #666; font-size: 12px;">No conversations yet.</div>';
+                return;
+            }
+
+            list.innerHTML = '';
+            Object.entries(conversations).forEach(([convId, convData]) => {
+                const item = document.createElement('div');
+                item.className = `conversation-item ${convId === currentConversation ? 'active' : ''}`;
+                item.onclick = () => selectConversation(convId, convData.name || convId);
+
+                const lastMsg = convData.lastMessage || 'No messages';
+                const lastTime = convData.lastMessageTime ? new Date(convData.lastMessageTime).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}) : '';
+
+                item.innerHTML = `
+                    <div class="conv-header">
+                        <span class="conv-name">${convData.name || convId}</span>
+                        <span class="conv-time">${lastTime}</span>
+                    </div>
+                    <div class="conv-preview">${lastMsg}</div>
+                `;
+
+                list.appendChild(item);
+            });
+        }
+
+        function selectConversation(convId, convName) {
+            currentConversation = convId;
+            document.getElementById('current-chat-name').textContent = convName;
+            document.getElementById('current-chat-status').textContent = 'Global Network • ' + new Date().toLocaleTimeString();
+
+            renderConversationsList();
+            loadMessages(convId);
+        }
+
+        // ============ MESSAGE HANDLING ============
+        function loadMessages(convId) {
+            const messagesRef = database.ref(`messages/${convId}`);
+
+            // Remove old listener if exists
+            if (messageListeners[convId]) {
+                messagesRef.off('child_added', messageListeners[convId]);
+            }
+
+            // Load last 50 messages
+            messagesRef.limitToLast(50).on('child_added', (snapshot) => {
+                const msg = snapshot.val();
+                renderMessage(msg, convId);
+                messageListeners[convId] = snapshot;
+            });
+        }
+
+        function renderMessage(msg, convId) {
+            if (convId !== currentConversation) return;
+
+            const container = document.getElementById('messages-container');
+            
+            // Clear empty state
+            if (container.querySelector('.empty-chat')) {
+                container.innerHTML = '';
+            }
+
+            const isOwn = msg.userId === currentUser.id;
+            const group = document.createElement('div');
+            group.className = `message-group ${isOwn ? 'own' : 'other'}`;
+
+            const timestamp = new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+
+            group.innerHTML = `
+                ${!isOwn ? `<div style="width: 100%;"><div class="message-sender">${msg.username}</div>` : ''}
+                <div>
+                    <div class="message-bubble">${escapeHtml(msg.text)}</div>
+                    <div class="message-info">${timestamp}</div>
+                </div>
+                ${!isOwn ? '</div>' : ''}
             `;
-            
-            logs.appendChild(div);
-            logs.scrollTop = logs.scrollHeight;
+
+            container.appendChild(group);
+            container.scrollTop = container.scrollHeight;
+
+            // Update conversation last message
+            database.ref(`conversations/${convId}`).update({
+                lastMessage: msg.text.substring(0, 50),
+                lastMessageTime: msg.timestamp
+            });
         }
 
-        // Event Listeners
-        document.getElementById('cmd-input').addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') pushMessage();
+        function sendMessage() {
+            const input = document.getElementById('message-input');
+            const text = input.value.trim();
+
+            if (!text || !currentConversation) return;
+
+            const msgRef = database.ref(`messages/${currentConversation}`).push();
+            msgRef.set({
+                text: text,
+                username: currentUser.username,
+                userId: currentUser.id,
+                timestamp: new Date().toISOString()
+            });
+
+            input.value = '';
+            input.focus();
+        }
+
+        // ============ UTILITIES ============
+        function generateUID() {
+            return 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        }
+
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+
+        function clearMessages() {
+            if (currentConversation && confirm('Clear all messages in this conversation?')) {
+                database.ref(`messages/${currentConversation}`).remove();
+                document.getElementById('messages-container').innerHTML = '<div class="empty-chat"><div class="empty-icon">💬</div><div class="empty-text">Messages cleared</div></div>';
+            }
+        }
+
+        function logout() {
+            if (confirm('Disconnect from network?')) {
+                location.reload();
+            }
+        }
+
+        // ============ EVENT LISTENERS ============
+        document.getElementById('message-input').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
         });
 
-        document.getElementById('auth-nick').addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') accessCore();
+        document.getElementById('search-conversations').addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase();
+            const items = document.querySelectorAll('.conversation-item');
+            items.forEach(item => {
+                const name = item.querySelector('.conv-name').textContent.toLowerCase();
+                item.style.display = name.includes(query) ? 'block' : 'none';
+            });
         });
 
-        // 500+ qatorga yetkazish uchun qo'shimcha dizayn elementlari va loglar
-        console.log("CIPHER_SYSTEM: Initializing security modules...");
-        console.log("CIPHER_SYSTEM: AES-256 handshake complete.");
-        console.log("CIPHER_SYSTEM: Global stream connected via Firebase Realtime.");
+        // Auto-update timestamp
+        setInterval(() => {
+            if (currentConversation) {
+                document.getElementById('current-chat-status').textContent = 'Global Network • ' + new Date().toLocaleTimeString();
+            }
+        }, 60000);
     </script>
+
 </body>
 </html>
